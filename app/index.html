@@ -172,7 +172,7 @@
 <script>
 (() => {
   'use strict';
-  const APP_VERSION = 'v1';
+  const APP_VERSION = 'v2';
   const $ = id => document.getElementById(id);
   const KEY = 'lumastrings.v1';
 
@@ -364,6 +364,28 @@
   }
   const cellW = () => (W - 36) / strings.length;
   const cellOf = x => Math.max(0, Math.min(strings.length - 1, Math.floor((x - 18) / cellW())));
+  // finger marker (same orb as Luma Synth, without the crosshair lines)
+  const OC = [255, 122, 200], oc = (a) => 'rgba(' + OC[0] + ',' + OC[1] + ',' + OC[2] + ',' + a + ')';
+  function oring(x, y, r, st, w) { g2.strokeStyle = st; g2.lineWidth = w; g2.beginPath(); g2.arc(x, y, r, 0, 6.2832); g2.stroke(); }
+  function oarc(x, y, r, a0, len, a, w) { g2.strokeStyle = oc(a); g2.lineWidth = w; g2.lineCap = 'round'; g2.beginPath(); g2.arc(x, y, r, a0, a0 + len); g2.stroke(); g2.lineCap = 'butt'; }
+  function ostar(x, y, s) { g2.beginPath(); g2.moveTo(x, y - s); g2.quadraticCurveTo(x, y, x + s, y); g2.quadraticCurveTo(x, y, x, y + s); g2.quadraticCurveTo(x, y, x - s, y); g2.quadraticCurveTo(x, y, x, y - s); g2.fill(); }
+  function drawOrb(x, y, t) {
+    const R = Math.min(40, Math.max(22, Math.min(W, H) * 0.07));
+    g2.globalAlpha = 1; g2.shadowBlur = 0;
+    let g = g2.createRadialGradient(x, y, 0, x, y, R * 2.8);
+    g.addColorStop(0, oc(.5)); g.addColorStop(.4, oc(.16)); g.addColorStop(1, oc(0));
+    g2.fillStyle = g; g2.beginPath(); g2.arc(x, y, R * 2.8, 0, 6.2832); g2.fill();
+    g = g2.createRadialGradient(x, y, R * .1, x, y, R);
+    g.addColorStop(0, oc(.5)); g.addColorStop(1, oc(.12));
+    g2.fillStyle = g; g2.beginPath(); g2.arc(x, y, R, 0, 6.2832); g2.fill();
+    oring(x, y, R, oc(.2), 7); oring(x, y, R, 'rgba(255,255,255,.85)', 1.6); oring(x, y, R, oc(.9), 2.4);
+    oring(x, y, R * 1.34, oc(.45), 1.2);
+    g2.setLineDash([1.5, 7]); g2.lineDashOffset = -t * 14; oring(x, y, R * 1.78, oc(.55), 1.6); g2.setLineDash([]);
+    oarc(x, y, R * 1.55, t * .9, .9, .75, 2); oarc(x, y, R * 1.55, t * .9 + 3.14, .9, .75, 2);
+    oarc(x, y, R * 2.05, -t * .55, 1.3, .45, 2); oarc(x, y, R * 2.05, -t * .55 + 2.6, .5, .45, 2);
+    g2.fillStyle = 'rgba(255,255,255,.95)'; ostar(x, y - R, 8); ostar(x, y + R, 8);
+    g2.beginPath(); g2.arc(x, y, 6, 0, 6.2832); g2.fill();
+  }
   function draw(dt) {
     g2.setTransform(DPR, 0, 0, DPR, 0, 0); g2.clearRect(0, 0, W, H);
     const n = strings.length, cw = cellW(), top = 26, bot = H - 30; let moving = false;
@@ -377,12 +399,13 @@
       g2.globalAlpha = on ? 1 : 0.42; g2.strokeStyle = col; g2.lineWidth = lw; g2.lineCap = 'round';
       g2.shadowColor = col; g2.shadowBlur = on ? 6 + a * 22 : 2;
       g2.beginPath();
-      const A = a * cw * 0.34 * Math.cos(phase[i]), steps = 22;
+      const A = a * cw * 0.16 * Math.cos(phase[i]), steps = 22;
       for (let k = 0; k <= steps; k++) { const u = k / steps, yy = top + (bot - top) * u, xx = x + A * Math.sin(Math.PI * u); if (k) g2.lineTo(xx, yy); else g2.moveTo(xx, yy); }
       g2.stroke(); g2.shadowBlur = 0;
       g2.globalAlpha = on ? 0.85 : 0.4; g2.fillStyle = st.root ? '#ffd68a' : '#8d85c4'; g2.fillText(noteName(st.midi), x, H - 11);
       g2.globalAlpha = 1; g2.beginPath(); g2.arc(x, top - 6, 2.2, 0, 6.3); g2.fillStyle = col; g2.globalAlpha = on ? 0.9 : 0.4; g2.fill(); g2.globalAlpha = 1;
     }
+    if (ptrs.size) { moving = true; const t = performance.now() / 1000; for (const p of ptrs.values()) drawOrb(p.px, p.py, t); }
     return moving;
   }
   function frame(t) {
@@ -396,12 +419,13 @@
     e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {}
     initAudio(); $('hint').classList.add('gone');
     const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = (e.clientY - r.top) / r.height, idx = cellOf(x);
-    ptrs.set(e.pointerId, { idx, x, t: e.timeStamp, v: 0.5 });
+    ptrs.set(e.pointerId, { idx, x, t: e.timeStamp, v: 0.5, px: x, py: e.clientY - r.top });
     pluck(idx, 0.72, y); kick();
   });
   cv.addEventListener('pointermove', e => {
     const p = ptrs.get(e.pointerId); if (!p) return;
-    const r = cv.getBoundingClientRect(), evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    const r = cv.getBoundingClientRect(); p.px = e.clientX - r.left; p.py = e.clientY - r.top; kick();
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     for (const ev of (evs.length ? evs : [e])) {
       const x = ev.clientX - r.left, y = (ev.clientY - r.top) / r.height, idx = cellOf(x), dt = Math.max(3, ev.timeStamp - p.t);
       if (idx !== p.idx) {
@@ -413,7 +437,7 @@
       }
     }
   });
-  const endP = e => ptrs.delete(e.pointerId);
+  const endP = e => { ptrs.delete(e.pointerId); kick(); };
   cv.addEventListener('pointerup', endP); cv.addEventListener('pointercancel', endP);
   cv.addEventListener('contextmenu', e => e.preventDefault());
   $('btnDamp').addEventListener('pointerdown', e => { e.preventDefault(); $('btnDamp').classList.add('on'); damp(); });
