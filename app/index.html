@@ -136,14 +136,14 @@
   <div class="chords" id="chords"></div>
   <div class="field" id="field">
     <canvas id="cv"></canvas>
-    <div class="hint" id="hint">Swipe across the strings<small>hold a chord to change it</small></div>
+    <div class="hint" id="hint">Swipe across the strings<small>hold a slot to change it</small></div>
   </div>
 </div>
 
 <div class="overlay" id="ovChord">
   <div class="sheet" role="dialog" aria-label="Edit chord">
     <button class="rbtn close" id="btnChClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2>Chord</h2>
+    <h2 id="edTitle">Chord</h2>
     <div class="prevrow"><div><span class="prevname" id="pvName">C</span><span class="prevnotes" id="pvNotes"></span></div><button class="btn primary" id="btnPrev">Strum it</button></div>
     <div class="fields">
       <div class="fld full"><label>Root</label><div class="grid g6 seg" id="gRoot"></div></div>
@@ -165,14 +165,12 @@
         <div class="seg" id="segN"><button data-v="8">8</button><button data-v="10">10</button><button data-v="12">12</button></div></div>
       <div class="fld"><label>Octave</label>
         <div class="seg" id="segOct"><button data-v="-1">Lower</button><button data-v="0">Normal</button><button data-v="1">Higher</button></div></div>
-      <div class="fld"><label>Scale mode: key</label><select id="selKey"></select></div>
-      <div class="fld"><label>Scale mode: scale</label><select id="selScale"></select></div>
       <div class="fld"><label>Reverb <em id="vRev"></em></label><input type="range" id="rngRev" min="0" max="100"></div>
       <div class="fld"><label>Delay <em id="vDly"></em></label><input type="range" id="rngDly" min="0" max="100"></div>
       <div class="fld"><label>Volume <em id="vMaster"></em></label><input type="range" id="rngMaster" min="0" max="100"></div>
       <div class="fld"><label>Keep screen on</label>
         <div class="seg" id="segWake"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
-      <div class="fld full"><label>Chords</label><button class="btn danger" id="btnReset">Reset the six chords</button></div>
+      <div class="fld full"><label>Reset</label><button class="btn danger" id="btnReset">Reset chords and scales</button></div>
     </div>
     <div class="foot">&copy; AlpacaSoft &amp; <a href="https://instagram.com/darksaiko" target="_blank" rel="noopener noreferrer">Saiko</a><span class="ver" id="appVer"></span></div>
   </div>
@@ -193,7 +191,7 @@
 <script>
 (() => {
   'use strict';
-  const APP_VERSION = 'v3';
+  const APP_VERSION = 'v4';
   const $ = id => document.getElementById(id);
   const KEY = 'lumastrings.v1';
 
@@ -213,15 +211,18 @@
   const COLS = ['90,169,255', '75,214,196', '141,255,106', '255,193,90', '255,138,208', '176,115,255'];
   const DEFCH = [[0, 0], [9, 1], [5, 0], [7, 0], [4, 1], [2, 1]];   // C  Am  F  G  Em  Dm
 
-  const DEF = { chords: DEFCH.map(([r, t]) => ({ r, t })), sel: 0, mode: 'chord', tone: 'harp', ring: 1, n: 10, oct: 0, key: 0, scale: 'major', rev: 35, dly: 20, master: 80, wake: 1 };
+  const SSHORT = { major: 'Major', minor: 'Minor', pentMaj: 'Pent Maj', pentMin: 'Pent Min', dorian: 'Dorian', mixo: 'Mixolydian', harmMin: 'Harm Min', blues: 'Blues' };
+  const DEFSC = [[0, 'major'], [9, 'minor'], [4, 'pentMin'], [9, 'pentMin'], [4, 'blues'], [2, 'dorian']];   // C Maj, A Min, E PentMin, A PentMin, E Blues, D Dorian
+  const DEF = { chords: DEFCH.map(([r, t]) => ({ r, t })), scales: DEFSC.map(([k, s]) => ({ k, s })), ssel: 0, sel: 0, mode: 'chord', tone: 'harp', ring: 1, n: 10, oct: 0, key: 0, scale: 'major', rev: 35, dly: 20, master: 80, wake: 1 };
   let S = JSON.parse(JSON.stringify(DEF));
   try { const raw = JSON.parse(localStorage.getItem(KEY) || 'null'); if (raw && typeof raw === 'object') Object.assign(S, raw); } catch (_) {}
   const num = (v, a, b, d) => (typeof v === 'number' && isFinite(v)) ? Math.min(b, Math.max(a, v)) : d;
   S.chords = DEF.chords.map((d, i) => { const c = S.chords && S.chords[i]; return c ? { r: num(c.r, 0, 11, d.r) | 0, t: num(c.t, 0, TYPES.length - 1, d.t) | 0 } : d; });
+  S.scales = DEF.scales.map((d, i) => { const c = S.scales && S.scales[i]; return c ? { k: num(c.k, 0, 11, d.k) | 0, s: SCALES[c.s] ? c.s : d.s } : d; });
+  S.ssel = num(S.ssel, 0, 5, 0) | 0; S.key = S.scales[S.ssel].k; S.scale = S.scales[S.ssel].s;
   S.sel = num(S.sel, 0, 5, 0) | 0; S.mode = S.mode === 'scale' ? 'scale' : 'chord';
   if (!['harp', 'nylon', 'steel'].includes(S.tone)) S.tone = 'harp';
   S.ring = num(S.ring, 0, 2, 1) | 0; S.n = [8, 10, 12].includes(S.n) ? S.n : 10; S.oct = num(S.oct, -1, 1, 0) | 0;
-  S.key = num(S.key, 0, 11, 0) | 0; if (!SCALES[S.scale]) S.scale = 'major';
   S.rev = num(S.rev, 0, 100, 35); S.dly = num(S.dly, 0, 100, 20); S.master = num(S.master, 0, 100, 80); S.wake = S.wake === 0 ? 0 : 1;
   let save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
   const toast = msg => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); };
@@ -242,7 +243,8 @@
       const keyMidi = base + S.key - (S.key >= 7 ? 12 : 0), ivs = SCALES[S.scale][1];
       for (let k = 0; out.length < n; k++) for (const iv of ivs) { if (out.length < n) out.push(keyMidi + iv + 12 * k); }
     }
-    strings = out.map(m => ({ midi: m, chord: pcs.has(m % 12), root: m % 12 === c.r }));
+    const rootPc = S.mode === 'chord' ? c.r : S.key;
+    strings = out.map(m => ({ midi: m, chord: S.mode === 'scale' || pcs.has(m % 12), root: m % 12 === rootPc }));
     amp = new Array(n).fill(0); phase = new Array(n).fill(0);
   }
 
@@ -342,34 +344,56 @@
     b.addEventListener('contextmenu', e => e.preventDefault());
   });
   function paintChords() {
-    S.chords.forEach((c, i) => {
-      chEls[i].querySelector('.nm').textContent = chordName(c);
-      chEls[i].querySelector('.nt').textContent = chordPcs(c).map(p => ROOTS[p]).join(' ');
-      chEls[i].classList.toggle('sel', i === S.sel);
+    const sc = S.mode === 'scale';
+    chordsEl.classList.toggle('scales', sc);
+    (sc ? S.scales : S.chords).forEach((c, i) => {
+      chEls[i].querySelector('.nm').textContent = sc ? ROOTS[c.k] : chordName(c);
+      chEls[i].querySelector('.nt').textContent = sc ? SSHORT[c.s] : chordPcs(c).map(p => ROOTS[p]).join(' ');
+      chEls[i].classList.toggle('sel', i === (sc ? S.ssel : S.sel));
     });
   }
   function selectChord(i) {
-    S.sel = i; save(); paintChords(); buildStrings(); kick();
+    if (S.mode === 'scale') { S.ssel = i; S.key = S.scales[i].k; S.scale = S.scales[i].s; } else S.sel = i;
+    save(); paintChords(); buildStrings(); kick();
     if (ctx && ctx.state !== 'running') unlock();
   }
 
   // ---------------- chord editor ----------------
   let editing = 0;
   const gRoot = $('gRoot'), gType = $('gType');
-  ROOTS.forEach((r, i) => { const b = document.createElement('button'); b.textContent = r; b.addEventListener('click', () => { S.chords[editing].r = i; chordChanged(); }); gRoot.appendChild(b); });
-  TYPES.forEach((t, i) => { const b = document.createElement('button'); b.textContent = t[1]; b.addEventListener('click', () => { S.chords[editing].t = i; chordChanged(); }); gType.appendChild(b); });
+  ROOTS.forEach((r, i) => { const b = document.createElement('button'); b.textContent = r; b.addEventListener('click', () => { if (edSc) S.scales[editing].k = i; else S.chords[editing].r = i; chordChanged(); }); gRoot.appendChild(b); });
+  let edSc = false;
+  const SKEYS = Object.keys(SCALES);
+  function fillType() {
+    gType.innerHTML = ''; gType.classList.toggle('g6', !edSc); gType.classList.toggle('g4', edSc);
+    (edSc ? SKEYS.map(k => SSHORT[k]) : TYPES.map(t => t[1])).forEach((label, i) => {
+      const b = document.createElement('button'); b.textContent = label;
+      b.addEventListener('click', () => { if (edSc) S.scales[editing].s = SKEYS[i]; else S.chords[editing].t = i; chordChanged(); }); gType.appendChild(b);
+    });
+  }
   function paintEditor() {
+    if (edSc) {
+      const c = S.scales[editing], ivs = SCALES[c.s][1];
+      $('pvName').textContent = ROOTS[c.k]; $('pvNotes').textContent = SCALES[c.s][0] + '  ·  ' + ivs.map(iv => ROOTS[(c.k + iv) % 12]).join(' ');
+      [...gRoot.children].forEach((b, i) => b.classList.toggle('on', i === c.k)); [...gType.children].forEach((b, i) => b.classList.toggle('on', SKEYS[i] === c.s));
+      return;
+    }
     const c = S.chords[editing];
     $('pvName').textContent = chordName(c); $('pvNotes').textContent = chordPcs(c).map(p => ROOTS[p]).join('  ');
     [...gRoot.children].forEach((b, i) => b.classList.toggle('on', i === c.r)); [...gType.children].forEach((b, i) => b.classList.toggle('on', i === c.t));
   }
-  function chordChanged() { save(); paintEditor(); paintChords(); if (S.sel === editing) buildStrings(); kick(); }
-  function openChord(i) { editing = i; paintEditor(); $('ovChord').classList.add('open'); }
+  function chordChanged() {
+    save(); paintEditor(); paintChords();
+    if (edSc) { if (S.ssel === editing) { S.key = S.scales[editing].k; S.scale = S.scales[editing].s; buildStrings(); } } else if (S.sel === editing) buildStrings();
+    kick();
+  }
+  function openChord(i) { editing = i; edSc = S.mode === 'scale'; $('edTitle').textContent = edSc ? 'Scale' : 'Chord'; fillType(); paintEditor(); $('ovChord').classList.add('open'); }
   function strumChord() {
-    initAudio(); const c = S.chords[editing], base = 48 + S.oct * 12, root = base + c.r - (c.r >= 7 ? 12 : 0);
-    const save0 = strings, tmp = TYPES[c.t][2].map(iv => root + iv).concat([root + 12]);
+    initAudio(); const c = S.chords[editing], base = 48 + S.oct * 12;
+    const kk = edSc ? S.scales[editing].k : c.r, root = base + kk - (kk >= 7 ? 12 : 0);
+    const save0 = strings, tmp = (edSc ? SCALES[S.scales[editing].s][1] : TYPES[c.t][2]).map(iv => root + iv).concat([root + 12]);
     strings = tmp.map(m => ({ midi: m })); const a0 = amp; amp = new Array(tmp.length).fill(0);
-    tmp.forEach((_, k) => pluck(k, 0.7, 0.5, ctx ? ctx.currentTime + 0.01 + k * 0.07 : 0));
+    tmp.forEach((_, k) => pluck(k, 0.7, 0.5, ctx ? ctx.currentTime + 0.01 + k * (edSc ? 0.1 : 0.07) : 0));
     strings = save0; amp = a0;
   }
   $('btnPrev').addEventListener('click', strumChord);
@@ -466,30 +490,25 @@
 
   // ---------------- modes + settings ----------------
   function paintMode() { document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode)); }
-  document.querySelectorAll('#tabs .tab').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.m; save(); paintMode(); buildStrings(); kick(); }));
+  document.querySelectorAll('#tabs .tab').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.m; save(); paintMode(); paintChords(); buildStrings(); kick(); }));
   const seg = (id, key, fn) => document.querySelectorAll('#' + id + ' button').forEach(b => b.addEventListener('click', () => {
     const raw = b.dataset.v; S[key] = isNaN(+raw) ? raw : +raw; save(); syncUI(); fn && fn();
   }));
-  const selKey = $('selKey'), selScale = $('selScale');
-  ROOTS.forEach((r, i) => { const o = document.createElement('option'); o.value = i; o.textContent = r; selKey.appendChild(o); });
-  Object.keys(SCALES).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = SCALES[k][0]; selScale.appendChild(o); });
   function syncUI() {
     [['segTone', 'tone'], ['segRing', 'ring'], ['segN', 'n'], ['segOct', 'oct'], ['segWake', 'wake']].forEach(([id, k]) =>
       document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', String(S[k]) === b.dataset.v)));
-    selKey.value = S.key; selScale.value = S.scale;
     $('rngRev').value = S.rev; $('vRev').textContent = S.rev + '%'; $('rngDly').value = S.dly; $('vDly').textContent = S.dly + '%';
     $('rngMaster').value = S.master; $('vMaster').textContent = S.master + '%';
   }
   seg('segTone', 'tone', () => cache.clear()); seg('segRing', 'ring', () => cache.clear());
   seg('segN', 'n', () => { buildStrings(); kick(); }); seg('segOct', 'oct', () => { buildStrings(); kick(); }); seg('segWake', 'wake', wake);
-  selKey.addEventListener('change', () => { S.key = +selKey.value; save(); buildStrings(); kick(); });
-  selScale.addEventListener('change', () => { S.scale = selScale.value; save(); buildStrings(); kick(); });
   $('rngRev').addEventListener('input', e => { S.rev = +e.target.value; $('vRev').textContent = S.rev + '%'; if (rsend) rsend.gain.value = S.rev / 100 * 0.9; save(); });
   $('rngDly').addEventListener('input', e => { S.dly = +e.target.value; $('vDly').textContent = S.dly + '%'; if (dsend) dsend.gain.value = S.dly / 100 * 0.6; save(); });
   $('rngMaster').addEventListener('input', e => { S.master = +e.target.value; $('vMaster').textContent = S.master + '%'; if (master) master.gain.value = S.master / 100; save(); });
   $('btnReset').addEventListener('click', () => {
-    if (!confirm('Reset the six chords to C, Am, F, G, Em, Dm?')) return;
-    S.chords = DEF.chords.map(c => ({ ...c })); S.sel = 0; save(); paintChords(); buildStrings(); kick(); toast('Chords reset');
+    if (!confirm('Reset the six chords to C, Am, F, G, Em, Dm and the six scales to the defaults?')) return;
+    S.chords = DEF.chords.map(c => ({ ...c })); S.sel = 0; S.scales = DEF.scales.map(c => ({ ...c })); S.ssel = 0; S.key = S.scales[0].k; S.scale = S.scales[0].s;
+    save(); paintChords(); buildStrings(); kick(); toast('Chords and scales reset');
   });
   const ovSet = $('ovSet');
   $('btnSet').addEventListener('click', () => { syncUI(); ovSet.classList.add('open'); });
@@ -511,16 +530,18 @@
   let SG = { list: [], cur: null };
   try { const r = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (r && Array.isArray(r.list)) SG = { list: r.list.filter(x => x && typeof x.name === 'string' && x.data), cur: r.cur || null }; } catch (_) {}
   const saveSG = () => { try { localStorage.setItem(SKEY, JSON.stringify(SG)); } catch (_) {} };
-  const SFIELDS = ['tone', 'ring', 'n', 'oct', 'key', 'scale', 'rev', 'dly', 'master', 'mode', 'sel'];
-  const snap = () => { const d = { chords: S.chords.map(c => ({ r: c.r, t: c.t })) }; SFIELDS.forEach(k => { d[k] = S[k]; }); return d; };
+  const SFIELDS = ['tone', 'ring', 'n', 'oct', 'rev', 'dly', 'master', 'mode', 'sel', 'ssel'];
+  const snap = () => { const d = { chords: S.chords.map(c => ({ r: c.r, t: c.t })), scales: S.scales.map(c => ({ k: c.k, s: c.s })) }; SFIELDS.forEach(k => { d[k] = S[k]; }); return d; };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const curSong = () => SG.list.find(x => x.id === SG.cur) || null;
   function clean(d) {
     const o = {}; if (!d || typeof d !== 'object') return null;
     o.chords = DEF.chords.map((df, i) => { const c = d.chords && d.chords[i]; return c ? { r: num(c.r, 0, 11, df.r) | 0, t: num(c.t, 0, TYPES.length - 1, df.t) | 0 } : { ...df }; });
+    o.scales = DEF.scales.map((df, i) => { const c = d.scales && d.scales[i]; return c ? { k: num(c.k, 0, 11, df.k) | 0, s: SCALES[c.s] ? c.s : df.s } : (i === 0 && SCALES[d.scale] ? { k: num(d.key, 0, 11, 0) | 0, s: d.scale } : { ...df }); });
+    o.ssel = num(d.ssel, 0, 5, 0) | 0;
     o.tone = ['harp', 'nylon', 'steel'].includes(d.tone) ? d.tone : 'harp'; o.ring = num(d.ring, 0, 2, 1) | 0;
-    o.n = [8, 10, 12].includes(d.n) ? d.n : 10; o.oct = num(d.oct, -1, 1, 0) | 0; o.key = num(d.key, 0, 11, 0) | 0;
-    o.scale = SCALES[d.scale] ? d.scale : 'major'; o.rev = num(d.rev, 0, 100, 35); o.dly = num(d.dly, 0, 100, 20);
+    o.n = [8, 10, 12].includes(d.n) ? d.n : 10; o.oct = num(d.oct, -1, 1, 0) | 0;
+    o.rev = num(d.rev, 0, 100, 35); o.dly = num(d.dly, 0, 100, 20);
     o.master = num(d.master, 0, 100, 80); o.mode = d.mode === 'scale' ? 'scale' : 'chord'; o.sel = num(d.sel, 0, 5, 0) | 0;
     return o;
   }
@@ -531,7 +552,7 @@
   }
   function loadSong(id) {
     const s = SG.list.find(x => x.id === id); if (!s) return;
-    Object.assign(S, clean(s.data)); SG.cur = id; saveSG(); save(); cache.clear();
+    Object.assign(S, clean(s.data)); S.key = S.scales[S.ssel].k; S.scale = S.scales[S.ssel].s; SG.cur = id; saveSG(); save(); cache.clear();
     if (rsend) rsend.gain.value = S.rev / 100 * 0.9; if (dsend) dsend.gain.value = S.dly / 100 * 0.6; if (master) master.gain.value = S.master / 100;
     paintMode(); paintChords(); buildStrings(); syncUI(); paintSongBtn(); kick(); toast('Loaded ' + s.name);
   }
