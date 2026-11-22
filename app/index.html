@@ -110,6 +110,16 @@
   input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#07050f;border:2px solid #fff}
   .prevrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-6px 56px 12px 0}
   .prevrow .btn{flex:none;padding:9px 18px}
+  #btnSong{max-width:130px;margin-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:1px;text-transform:none;font-size:12px;font-weight:400;border-color:rgba(155,107,255,.7)}
+  #btnSong.dirty::after{content:' \u25CF';color:#ff7ac8}
+  .songs{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+  .song{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-radius:16px;border:1.5px solid rgba(155,107,255,.45);background:#0b0826}
+  .song.cur{border-color:#ff7ac8;box-shadow:0 0 14px rgba(255,122,200,.25)}
+  .song .nm{flex:1;min-width:0;text-align:left;background:none;border:0;color:var(--text);font:400 16px 'Outfit',system-ui,sans-serif;padding:8px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+  .song .sm{flex:none;padding:7px 11px;border-radius:12px;border:1.5px solid rgba(155,107,255,.45);background:transparent;color:var(--muted);font:400 13px 'Outfit',system-ui,sans-serif;cursor:pointer}
+  .song .sm.del{color:#ffb0bf;border-color:rgba(255,107,127,.55)}
+  .songs .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px 0;letter-spacing:.5px}
+  .srow{display:flex;gap:8px;flex-wrap:wrap} .srow .btn{flex:1 1 120px}
   #ovChord .fields{gap:12px 28px} #ovChord .grid button{padding:8px 2px;font-size:14px}
   .prevname{font-size:30px;font-weight:200;letter-spacing:3px;text-shadow:0 0 16px rgba(155,107,255,.8)}
   .prevnotes{font-size:12px;letter-spacing:2px;color:var(--muted);margin-left:10px}
@@ -121,7 +131,7 @@
 <div class="app">
   <div class="tabs" id="tabs"><button class="tab" data-m="chord">CHORD</button><button class="tab" data-m="scale">SCALE</button></div>
   <div class="pill"><button class="rbtn" id="btnFs" aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button><button class="rbtn" id="btnSet" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>
-  <div class="tport"><button class="dampb" id="btnDamp">DAMP</button></div>
+  <div class="tport"><button class="dampb" id="btnSong">Songs</button><button class="dampb" id="btnDamp">DAMP</button></div>
 
   <div class="chords" id="chords"></div>
   <div class="field" id="field">
@@ -167,12 +177,23 @@
     <div class="foot">&copy; AlpacaSoft &amp; <a href="https://instagram.com/darksaiko" target="_blank" rel="noopener noreferrer">Saiko</a><span class="ver" id="appVer"></span></div>
   </div>
 </div>
+<div class="overlay" id="ovSong">
+  <div class="sheet" role="dialog" aria-label="Songs">
+    <button class="rbtn close" id="btnSongClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2>Songs</h2>
+    <div class="srow"><button class="btn primary" id="btnSongSave">Save</button><button class="btn" id="btnSongNew">Save as new</button></div>
+    <div class="songs" id="songList"></div>
+    <div class="srow"><button class="btn" id="btnSongExp">Export all</button><button class="btn" id="btnSongImp">Import</button></div>
+    <input type="file" id="fileSong" accept=".json,application/json" hidden>
+    <div class="fld" style="margin-top:10px"><small>A song stores the six chords plus sound, ring time, strings, octave, scale, reverb, delay and volume.</small></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
 (() => {
   'use strict';
-  const APP_VERSION = 'v2';
+  const APP_VERSION = 'v3';
   const $ = id => document.getElementById(id);
   const KEY = 'lumastrings.v1';
 
@@ -202,7 +223,7 @@
   S.ring = num(S.ring, 0, 2, 1) | 0; S.n = [8, 10, 12].includes(S.n) ? S.n : 10; S.oct = num(S.oct, -1, 1, 0) | 0;
   S.key = num(S.key, 0, 11, 0) | 0; if (!SCALES[S.scale]) S.scale = 'major';
   S.rev = num(S.rev, 0, 100, 35); S.dly = num(S.dly, 0, 100, 20); S.master = num(S.master, 0, 100, 80); S.wake = S.wake === 0 ? 0 : 1;
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
+  let save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
   const toast = msg => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); };
 
   const chordName = c => ROOTS[c.r] + TYPES[c.t][0];
@@ -474,7 +495,7 @@
   $('btnSet').addEventListener('click', () => { syncUI(); ovSet.classList.add('open'); });
   $('btnSetClose').addEventListener('click', () => ovSet.classList.remove('open'));
   ovSet.addEventListener('pointerdown', e => { if (e.target === ovSet) ovSet.classList.remove('open'); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { ovSet.classList.remove('open'); $('ovChord').classList.remove('open'); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { ovSet.classList.remove('open'); $('ovSong').classList.remove('open'); $('ovChord').classList.remove('open'); } });
   $('btnFs').addEventListener('click', async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch (_) {} });
   let wl = null;
   async function wake() {
@@ -484,6 +505,83 @@
     } catch (_) {}
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { wake(); if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); } });
+
+  // ---------------- songs (presets) ----------------
+  const SKEY = 'lumastrings.songs.v1';
+  let SG = { list: [], cur: null };
+  try { const r = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (r && Array.isArray(r.list)) SG = { list: r.list.filter(x => x && typeof x.name === 'string' && x.data), cur: r.cur || null }; } catch (_) {}
+  const saveSG = () => { try { localStorage.setItem(SKEY, JSON.stringify(SG)); } catch (_) {} };
+  const SFIELDS = ['tone', 'ring', 'n', 'oct', 'key', 'scale', 'rev', 'dly', 'master', 'mode', 'sel'];
+  const snap = () => { const d = { chords: S.chords.map(c => ({ r: c.r, t: c.t })) }; SFIELDS.forEach(k => { d[k] = S[k]; }); return d; };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const curSong = () => SG.list.find(x => x.id === SG.cur) || null;
+  function clean(d) {
+    const o = {}; if (!d || typeof d !== 'object') return null;
+    o.chords = DEF.chords.map((df, i) => { const c = d.chords && d.chords[i]; return c ? { r: num(c.r, 0, 11, df.r) | 0, t: num(c.t, 0, TYPES.length - 1, df.t) | 0 } : { ...df }; });
+    o.tone = ['harp', 'nylon', 'steel'].includes(d.tone) ? d.tone : 'harp'; o.ring = num(d.ring, 0, 2, 1) | 0;
+    o.n = [8, 10, 12].includes(d.n) ? d.n : 10; o.oct = num(d.oct, -1, 1, 0) | 0; o.key = num(d.key, 0, 11, 0) | 0;
+    o.scale = SCALES[d.scale] ? d.scale : 'major'; o.rev = num(d.rev, 0, 100, 35); o.dly = num(d.dly, 0, 100, 20);
+    o.master = num(d.master, 0, 100, 80); o.mode = d.mode === 'scale' ? 'scale' : 'chord'; o.sel = num(d.sel, 0, 5, 0) | 0;
+    return o;
+  }
+  function paintSongBtn() {
+    const s = curSong(), b = $('btnSong');
+    b.textContent = s ? s.name : 'Songs';
+    b.classList.toggle('dirty', !!s && JSON.stringify(clean(s.data)) !== JSON.stringify(clean(snap())));
+  }
+  function loadSong(id) {
+    const s = SG.list.find(x => x.id === id); if (!s) return;
+    Object.assign(S, clean(s.data)); SG.cur = id; saveSG(); save(); cache.clear();
+    if (rsend) rsend.gain.value = S.rev / 100 * 0.9; if (dsend) dsend.gain.value = S.dly / 100 * 0.6; if (master) master.gain.value = S.master / 100;
+    paintMode(); paintChords(); buildStrings(); syncUI(); paintSongBtn(); kick(); toast('Loaded ' + s.name);
+  }
+  function paintSongs() {
+    const box = $('songList'); box.innerHTML = '';
+    if (!SG.list.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No songs yet. Set your chords, then tap Save as new.'; box.appendChild(e); }
+    SG.list.forEach(s => {
+      const row = document.createElement('div'); row.className = 'song' + (s.id === SG.cur ? ' cur' : '');
+      const nm = document.createElement('button'); nm.className = 'nm'; nm.textContent = s.name;
+      nm.addEventListener('click', () => { loadSong(s.id); paintSongs(); $('ovSong').classList.remove('open'); });
+      const rn = document.createElement('button'); rn.className = 'sm'; rn.textContent = 'Rename';
+      rn.addEventListener('click', () => { const v = (prompt('Song name', s.name) || '').trim().slice(0, 40); if (v) { s.name = v; saveSG(); paintSongs(); paintSongBtn(); } });
+      const dl = document.createElement('button'); dl.className = 'sm del'; dl.textContent = 'Delete';
+      dl.addEventListener('click', () => { if (!confirm('Delete "' + s.name + '"?')) return; SG.list = SG.list.filter(x => x.id !== s.id); if (SG.cur === s.id) SG.cur = null; saveSG(); paintSongs(); paintSongBtn(); });
+      row.append(nm, rn, dl); box.appendChild(row);
+    });
+  }
+  $('btnSong').addEventListener('click', () => { paintSongs(); $('ovSong').classList.add('open'); });
+  $('btnSongClose').addEventListener('click', () => $('ovSong').classList.remove('open'));
+  $('ovSong').addEventListener('pointerdown', e => { if (e.target === $('ovSong')) $('ovSong').classList.remove('open'); });
+  $('btnSongSave').addEventListener('click', () => {
+    const s = curSong(); if (!s) { $('btnSongNew').click(); return; }
+    s.data = snap(); saveSG(); paintSongs(); paintSongBtn(); toast('Saved ' + s.name);
+  });
+  $('btnSongNew').addEventListener('click', () => {
+    const v = (prompt('Song name', '') || '').trim().slice(0, 40); if (!v) return;
+    const s = { id: uid(), name: v, data: snap() }; SG.list.push(s); SG.cur = s.id; saveSG(); paintSongs(); paintSongBtn(); toast('Saved ' + v);
+  });
+  $('btnSongExp').addEventListener('click', () => {
+    if (!SG.list.length) { toast('Nothing to export yet'); return; }
+    const blob = new Blob([JSON.stringify({ app: 'luma-strings', songs: SG.list.map(s => ({ name: s.name, data: s.data })) }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'luma-strings-songs.json'; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); toast('Exported ' + SG.list.length + ' songs');
+  });
+  $('btnSongImp').addEventListener('click', () => $('fileSong').click());
+  $('fileSong').addEventListener('change', e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const j = JSON.parse(rd.result), arr = Array.isArray(j) ? j : j.songs; let n = 0;
+        (arr || []).forEach(x => { if (x && typeof x.name === 'string' && x.data) { SG.list.push({ id: uid(), name: x.name.slice(0, 40), data: clean(x.data) }); n++; } });
+        saveSG(); paintSongs(); paintSongBtn(); toast(n ? 'Imported ' + n + ' songs' : 'No songs found in that file');
+      } catch (_) { toast('Could not read that file'); }
+    };
+    rd.readAsText(f);
+  });
+  // keep the "unsaved changes" dot in sync after any edit
+  const _save = save; save = () => { _save(); paintSongBtn(); };
+  paintSongBtn();
   $('appVer').textContent = ' · ' + APP_VERSION;
   window.addEventListener('resize', resize); window.addEventListener('orientationchange', () => setTimeout(resize, 150));
   window.__ks = { pluckBuf: m => { initAudio(); return pluckBuf(m); }, get ctx() { return ctx; } };

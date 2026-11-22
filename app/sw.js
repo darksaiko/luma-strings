@@ -1,6 +1,6 @@
 // Luma Strings service worker — makes the app work offline.
 // Bump VERSION together with APP_VERSION in index.html on every release.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = 'luma-strings-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'manifest.json',
